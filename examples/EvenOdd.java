@@ -46,15 +46,25 @@ public class EvenOdd {
     network.train(inputs, outputs, 10000);
     
     //Now we can test the network. Has it learned what even and odd numbers are?
-    network.think(new double[][] {toBinary(0)});
-    
-    //network.getOutput()[0][0] gets us the first output of the first node
-    //(i.e. the only output of this neural net) 
-    if(network.getOutput()[0][0] < 0.5) {
-      System.out.println("The network thinks 50 is even.");
-    } else {
-      System.out.println("The network thinks 50 is odd.");
+    int count = 0;
+    for(int i = 0; i <= 255; i++) {
+      //Run i (in binary) through the network. 
+      network.think(new double[][] {toBinary(i)});
+      //network.getOutput()[0][0] gets the first value from the first output node.
+      //(i.e. the only value in this case)
+      if(network.getOutput()[0][0] < 0.5) {
+        System.out.println("The network thinks that " + i + " is even");
+        if(i % 2 == 0) {
+          count++;
+        }
+      } else {
+        System.out.println("The network thinks that " + i + " is odd");
+        if(i % 2 == 1) {
+          count++;
+        }
+      }
     }
+    System.out.println("The network got " + count + " numbers right out of 255.");
   }
   
   /**
