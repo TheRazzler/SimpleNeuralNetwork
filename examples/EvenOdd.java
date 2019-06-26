@@ -1,3 +1,9 @@
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.DataInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+
 /**
  * A neural network program which takes in numbers and decides whether they're even or odd
  * @author Spencer Yoder
@@ -39,11 +45,11 @@ public class EvenOdd {
     
     //Create the neural network. All we need to do is tell it the input and output layer and it will
     //structure the rest.
-    NeuralNet network = new NeuralNet(inputLayer, outputLayer);
+    NeuralNet network = loadNetwork("evenOdd.ntwk");
     
     //Now that we have our training data and network, we can train the network.
     //This instructs it to step down the cost function 10000 times.
-    network.train(inputs, outputs, 10000);
+//    network.train(inputs, outputs, 10000);
     
     //Now we can test the network. Has it learned what even and odd numbers are?
     int count = 0;
@@ -53,18 +59,17 @@ public class EvenOdd {
       //network.getOutput()[0][0] gets the first value from the first output node.
       //(i.e. the only value in this case)
       if(network.getOutput()[0][0] < 0.5) {
-        System.out.println("The network thinks that " + i + " is even");
         if(i % 2 == 0) {
           count++;
         }
       } else {
-        System.out.println("The network thinks that " + i + " is odd");
         if(i % 2 == 1) {
           count++;
         }
       }
     }
     System.out.println("The network got " + count + " numbers right out of 255.");
+    saveNetwork(inputLayer, outputLayer, "evenOdd.ntwk");
   }
   
   /**
@@ -80,5 +85,61 @@ public class EvenOdd {
       x = x / 2;
     }
     return binary;
+  }
+  
+  public static void saveNetwork(NeuronLayer inputLayer, NeuronLayer outputLayer, String path) {
+    try {
+      DataOutputStream dos = new DataOutputStream(new FileOutputStream(path));
+      double[][] inputWeights = inputLayer.getWeights();
+      dos.writeInt(inputWeights.length);
+      dos.writeInt(inputWeights[0].length);
+      for(int i = 0; i < inputWeights.length; i++) {
+        for(int j = 0; j < inputWeights[i].length; j++) {
+          dos.writeDouble(inputWeights[i][j]);
+        }
+      }
+      
+      double[][] outputWeights = outputLayer.getWeights();
+      dos.writeInt(outputWeights.length);
+      dos.writeInt(outputWeights[0].length);
+      for(int i = 0; i < outputWeights.length; i++) {
+        for(int j = 0; j < outputWeights[i].length; j++) {
+          dos.writeDouble(outputWeights[i][j]);
+        }
+      }
+      dos.close();
+    } catch (IOException e) {
+      throw new IllegalArgumentException("Error writing to file " + path);
+    }
+  }
+  
+  public static NeuralNet loadNetwork(String path) {
+    try {
+      DataInputStream dis = new DataInputStream(new FileInputStream(path));
+      double[][] inputWeights = new double[dis.readInt()][dis.readInt()];
+      for(int i = 0; i < inputWeights.length; i++) {
+        for(int j = 0; j < inputWeights.length; j++) {
+          inputWeights[i][j] = dis.readDouble();
+        }
+      }
+      
+      double[][] outputWeights = new double[dis.readInt()][dis.readInt()];
+      for(int i = 0; i < outputWeights.length; i++) {
+        for(int j = 0; j < outputWeights[i].length; j++) {
+          outputWeights[i][j] = dis.readDouble();
+        }
+      }
+      
+      NeuronLayer inputLayer = new NeuronLayer(inputWeights[0].length, inputWeights.length);
+      NeuronLayer outputLayer = new NeuronLayer(outputWeights[0].length, outputWeights.length);
+      
+      inputLayer.setWeights(inputWeights);
+      outputLayer.setWeights(outputWeights);
+      
+      dis.close();
+      return new NeuralNet(inputLayer, outputLayer);
+    } catch (IOException e) {
+      throw new IllegalArgumentException("Error reading from file " + path);
+    }
   }
 }

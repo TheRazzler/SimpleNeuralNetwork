@@ -54,4 +54,12 @@ public class NeuronLayer {
     public String toString() {
         return MatrixUtil.matrixToString(weights);
     }
+    
+    public double[][] getWeights() {
+      return weights;
+    }
+    
+    public void setWeights(double[][] weights) {
+      this.weights = weights;
+    }
 }

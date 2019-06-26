@@ -70,7 +70,7 @@ public class NeuralNet {
             // double[][] deltaLayer1 = NNMath.matrixMultiply(errorLayer1, MatrixUtil.apply(outputLayer1, NNMath::sigmoidDerivative));
             // double[][] adjustmentLayer1 = NNMath.matrixMultiply(NNMath.matrixTranspose(inputs), deltaLayer1);
 
-            if(i % 10000 == 0){
+            if(i % (numberOfTrainingIterations / 10) == 0){
                 System.out.println(" Training iteration " + i + " of " + numberOfTrainingIterations);
             }
             //System.out.println(this);
