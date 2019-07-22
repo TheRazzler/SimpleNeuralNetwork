@@ -14,24 +14,18 @@ public class NetIO {
    * @param outputLayer the output layer of the network to save
    * @param path the path name of the file the network will be saved into
    */
-  public static void saveNetwork(NeuronLayer inputLayer, NeuronLayer outputLayer, String path) {
+  public static void saveNetwork(NeuronLayer[] layers, String path) {
     try {
       DataOutputStream dos = new DataOutputStream(new FileOutputStream(path));
-      double[][] inputWeights = inputLayer.getWeights();
-      dos.writeInt(inputWeights.length);
-      dos.writeInt(inputWeights[0].length);
-      for(int i = 0; i < inputWeights.length; i++) {
-        for(int j = 0; j < inputWeights[i].length; j++) {
-          dos.writeDouble(inputWeights[i][j]);
-        }
-      }
-      
-      double[][] outputWeights = outputLayer.getWeights();
-      dos.writeInt(outputWeights.length);
-      dos.writeInt(outputWeights[0].length);
-      for(int i = 0; i < outputWeights.length; i++) {
-        for(int j = 0; j < outputWeights[i].length; j++) {
-          dos.writeDouble(outputWeights[i][j]);
+      dos.writeInt(layers.length);
+      for(int k = 0; k < layers.length; k++) {
+        double[][] inputWeights = layers[k].getWeights();
+        dos.writeInt(inputWeights.length);
+        dos.writeInt(inputWeights[0].length);
+        for(int i = 0; i < inputWeights.length; i++) {
+          for(int j = 0; j < inputWeights[i].length; j++) {
+            dos.writeDouble(inputWeights[i][j]);
+          }
         }
       }
       dos.close();
@@ -47,28 +41,27 @@ public class NetIO {
   public static NeuralNet loadNetwork(String path) {
     try {
       DataInputStream dis = new DataInputStream(new FileInputStream(path));
-      double[][] inputWeights = new double[dis.readInt()][dis.readInt()];
-      for(int i = 0; i < inputWeights.length; i++) {
-        for(int j = 0; j < inputWeights.length; j++) {
-          inputWeights[i][j] = dis.readDouble();
+      double[][][] weights = new double[dis.readInt()][][];
+      for(int k = 0; k < weights.length; k++) {
+        int length = dis.readInt();
+        int width = dis.readInt();
+        double[][] inputWeights = new double[length][width];
+        for(int i = 0; i < inputWeights.length; i++) {
+          for(int j = 0; j < inputWeights[i].length; j++) {
+            inputWeights[i][j] = dis.readDouble();
+          }
         }
+        weights[k] = inputWeights;
       }
       
-      double[][] outputWeights = new double[dis.readInt()][dis.readInt()];
-      for(int i = 0; i < outputWeights.length; i++) {
-        for(int j = 0; j < outputWeights[i].length; j++) {
-          outputWeights[i][j] = dis.readDouble();
-        }
+      NeuronLayer[] layers = new NeuronLayer[weights.length];
+      for(int i = 0; i < layers.length; i++) {
+        layers[i] = new NeuronLayer(weights[i][0].length, weights[i].length);
+        layers[i].setWeights(weights[i]);
       }
-      
-      NeuronLayer inputLayer = new NeuronLayer(inputWeights[0].length, inputWeights.length);
-      NeuronLayer outputLayer = new NeuronLayer(outputWeights[0].length, outputWeights.length);
-      
-      inputLayer.setWeights(inputWeights);
-      outputLayer.setWeights(outputWeights);
       
       dis.close();
-      return new NeuralNet(inputLayer, outputLayer);
+      return new NeuralNet(layers);
     } catch (IOException e) {
       throw new IllegalArgumentException("Error reading from file " + path);
     }

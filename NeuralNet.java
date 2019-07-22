@@ -5,20 +5,18 @@ import java.util.function.Function;
  * http://stevenmiller888.github.io/mind-how-to-build-a-neural-network-part-2/
  */
 public class NeuralNet {
-
-    private final NeuronLayer layer1, layer2;
-    private double[][] outputLayer1;
-    private double[][] outputLayer2;
+    private final NeuronLayer[] layers;
+    private double[][][] outputLayers;
     private final double learningRate;
 
-    public NeuralNet(NeuronLayer layer1, NeuronLayer layer2) {
-        this(layer1, layer2, 0.1);
+    public NeuralNet(NeuronLayer[] layers) {
+        this(layers, 0.1);
     }
 
-    public NeuralNet(NeuronLayer layer1, NeuronLayer layer2, double learningRate) {
-        this.layer1 = layer1;
-        this.layer2 = layer2;
+    public NeuralNet(NeuronLayer[] layers, double learningRate) {
+        this.layers = layers;
         this.learningRate = learningRate;
+        outputLayers = new double[layers.length][][];
     }
 
     /**
@@ -29,12 +27,18 @@ public class NeuralNet {
      * @param inputs
      */
     public void think(double[][] inputs) {
-        outputLayer1 = MatrixUtil.apply(NNMath.matrixMultiply(inputs, layer1.weights), layer1.activationFunction); // 4x4
-        outputLayer2 = MatrixUtil.apply(NNMath.matrixMultiply(outputLayer1, layer2.weights), layer2.activationFunction); // 4x1
+      outputLayers[0] = MatrixUtil.apply(NNMath.matrixMultiply(inputs, layers[0].weights), layers[0].activationFunction);
+      for(int i = 1; i < outputLayers.length; i++) {
+        outputLayers[i] = MatrixUtil.apply(NNMath.matrixMultiply(outputLayers[i - 1], layers[i].weights), layers[i].activationFunction); // 4x4
+      }
     }
 
     public void train(double[][] inputs, double[][] outputs, int numberOfTrainingIterations) {
-        for (int i = 0; i < numberOfTrainingIterations; ++i) {
+        int len = layers.length;
+        double[][][] deltaLayers = new double[len][][]; 
+        double[][][] errorLayers = new double[len][][]; 
+        double[][][] adjustmentLayers = new double[len][][];
+        for (int k = 0; k < numberOfTrainingIterations; ++k) {
             // pass the training set through the network
             think(inputs); // 4x3
 
@@ -42,27 +46,32 @@ public class NeuralNet {
 
             // calculate the error for layer 2
             // (the difference between the desired output and predicted output for each of the training inputs)
-            double[][] errorLayer2 = NNMath.matrixSubtract(outputs, outputLayer2); // 4x1
-            double[][] deltaLayer2 = NNMath.scalarMultiply(errorLayer2, MatrixUtil.apply(outputLayer2, layer2.activationFunctionDerivative)); // 4x1
+            errorLayers[len - 1] = NNMath.matrixSubtract(outputs, outputLayers[len - 1]); // 4x1
+            deltaLayers[len - 1] = NNMath.scalarMultiply(errorLayers[len - 1], MatrixUtil.apply(outputLayers[len - 1], layers[len - 1].activationFunctionDerivative)); // 4x1
 
             // calculate the error for layer 1
             // (by looking at the weights in layer 1, we can determine by how much layer 1 contributed to the error in layer 2)
-
-            double[][] errorLayer1 = NNMath.matrixMultiply(deltaLayer2, NNMath.matrixTranspose(layer2.weights)); // 4x4
-            double[][] deltaLayer1 = NNMath.scalarMultiply(errorLayer1, MatrixUtil.apply(outputLayer1, layer1.activationFunctionDerivative)); // 4x4
+            for(int i = len - 2; i >= 0; i--) {
+              errorLayers[i] = NNMath.matrixMultiply(deltaLayers[i + 1], NNMath.matrixTranspose(layers[i + 1].weights)); // 4x4
+              deltaLayers[i] = NNMath.scalarMultiply(errorLayers[i], MatrixUtil.apply(outputLayers[i], layers[i].activationFunctionDerivative)); // 4x4
+            }
 
             // Calculate how much to adjust the weights by
             // Since we’re dealing with matrices, we handle the division by multiplying the delta output sum with the inputs' transpose!
+            
+            adjustmentLayers[0] = NNMath.matrixMultiply(NNMath.matrixTranspose(inputs), deltaLayers[0]); // 4x4
+            for(int i = 1; i < len; i++) {
+              adjustmentLayers[i] = NNMath.matrixMultiply(NNMath.matrixTranspose(outputLayers[i - 1]), deltaLayers[i]); // 4x1
+            }
 
-            double[][] adjustmentLayer1 = NNMath.matrixMultiply(NNMath.matrixTranspose(inputs), deltaLayer1); // 4x4
-            double[][] adjustmentLayer2 = NNMath.matrixMultiply(NNMath.matrixTranspose(outputLayer1), deltaLayer2); // 4x1
-
-            adjustmentLayer1 = MatrixUtil.apply(adjustmentLayer1, (x) -> learningRate * x);
-            adjustmentLayer2 = MatrixUtil.apply(adjustmentLayer2, (x) -> learningRate * x);
+            for(int i = 0; i < len; i++) {
+              adjustmentLayers[i] = MatrixUtil.apply(adjustmentLayers[i], (x) -> learningRate * x);
+            }
 
             // adjust the weights
-            this.layer1.adjustWeights(adjustmentLayer1);
-            this.layer2.adjustWeights(adjustmentLayer2);
+            for(int i = 0; i < len; i++) {
+              this.layers[i].adjustWeights(adjustmentLayers[i]);
+            }
 
             // if you only had one layer
             // synaptic_weights += dot(training_set_inputs.T, (training_set_outputs - output) * output * (1 - output))
@@ -70,8 +79,8 @@ public class NeuralNet {
             // double[][] deltaLayer1 = NNMath.matrixMultiply(errorLayer1, MatrixUtil.apply(outputLayer1, NNMath::sigmoidDerivative));
             // double[][] adjustmentLayer1 = NNMath.matrixMultiply(NNMath.matrixTranspose(inputs), deltaLayer1);
 
-            if(i % (numberOfTrainingIterations / 10) == 0){
-                System.out.println(" Training iteration " + i + " of " + numberOfTrainingIterations);
+            if(k % (numberOfTrainingIterations / 10) == 0){
+                System.out.println(" Training iteration " + k + " of " + numberOfTrainingIterations);
             }
             //System.out.println(this);
 
@@ -79,26 +88,28 @@ public class NeuralNet {
     }
 
     public double[][] getOutput() {
-        return outputLayer2;
+        return outputLayers[outputLayers.length - 1];
+    }
+    
+    public NeuronLayer[] getLayers() {
+      return layers;
     }
 
     @Override
     public String toString() {
-        String result = "Layer 1\n";
-        result += layer1.toString();
-        result += "Layer 2\n";
-        result += layer2.toString();
-
-        if (outputLayer1 != null) {
-            result += "Layer 1 output\n";
-            result += MatrixUtil.matrixToString(outputLayer1);
+        StringBuilder result = new StringBuilder();
+        for(int i = 0; i < layers.length; i++) {
+          result.append("Layer " + (i + 1) + "\n");
+          result.append(layers[i].toString());
+        }
+        
+        for(int i = 0; i < outputLayers.length; i++) {
+          if (outputLayers[i] != null) {
+              result.append("Layer " + (i + 1) + " output\n");
+              result.append(MatrixUtil.matrixToString(outputLayers[i]));
+          }
         }
 
-        if (outputLayer2 != null) {
-            result += "Layer 2 output\n";
-            result += MatrixUtil.matrixToString(outputLayer2);
-        }
-
-        return result;
+        return result.toString();
     }
 }

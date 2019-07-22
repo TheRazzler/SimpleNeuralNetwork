@@ -29,17 +29,14 @@ public class EvenOdd {
       {0}
     };
     
-    //This is the input layer. Each number will be turned into an 8-bit binary number
-    //Since each number is 8 bits, each node takes 8 inputs. I arbitrarily chose 8 nodes.
-    NeuronLayer inputLayer = new NeuronLayer(8, 8);
-    
-    //This is the output layer. It has 1 node (which outputs 1 for odd numbers, 0 for even).
-    //It takes 8 inputs: 1 for every node in the previous layer.
-    NeuronLayer outputLayer = new NeuronLayer(1, 8);
+    //These are the layers of the neural network. First is the input layer with 16 nodes which takes 2 inputs
+    //Second is a hidden layer which takes 16 inputs (1 for each node in the previous layer) and has 2 nodes
+    //Third is the output layer with 1 node and 2 inputs (1 for each node in the previous layer)
+    NeuronLayer[] layers = {new NeuronLayer(16, 8), new NeuronLayer(2, 16), new NeuronLayer(1, 2)};
     
     //Create the neural network. All we need to do is tell it the input and output layer and it will
     //structure the rest.
-    NeuralNet network = new NeuralNet(inputLayer, outputLayer);
+    NeuralNet network = new NeuralNet(layers);
     
     //Now that we have our training data and network, we can train the network.
     //This instructs it to step down the cost function 10000 times.
